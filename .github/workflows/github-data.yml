@@ -1,0 +1,40 @@
+name: GitHub Data (ink ridge)
+
+on:
+  schedule:
+    - cron: "23 1 * * *"     # every day at 09:23 Malaysia time
+  workflow_dispatch:          # lets you run it by hand from the Actions tab
+  push:
+    branches: [main, master]
+    paths:
+      - "scripts/**"
+      - ".github/workflows/github-data.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: github-data
+  cancel-in-progress: true
+
+jobs:
+  draw:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Draw the contribution ridge
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python scripts/github_data.py --user Maxteoh5589
+
+      - name: Commit if it changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/github-data.svg
+          git diff --staged --quiet || (git commit -m "chore: refresh GitHub data graph" && git push)
