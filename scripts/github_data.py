@@ -140,8 +140,8 @@ def fmt_date(iso):
 
 # ------------------------------------------------------------------ draw
 def draw(total, weeks, user):
-    W, H = 1000, 290
-    X0, X1, BASE, HMAX = 40, 960, 232, 128
+    W, H = 1000, 318
+    X0, X1, BASE, HMAX = 40, 960, 254, 126
     counts = [sum(c for _, c in w) for w in weeks]
     n = len(counts)
     peak = max(counts) or 1
@@ -159,7 +159,8 @@ def draw(total, weeks, user):
     near_j = jitter(near, 2)
     ridge_d = catmull(near_j)
     near_fill = f"M{X0-40},{BASE+30} " + ridge_d + f" L{X1+40},{BASE+30} Z"
-    far_fill = f"M{X0-40},{BASE+30} " + catmull(far) + f" L{X1+40},{BASE+30} Z"
+    far = [(X0 - 80, BASE - 8)] + far[1:-1] + [(X1 + 80, BASE - 8)]
+    far_fill = f"M{X0-80},{BASE+30} " + catmull(far) + f" L{X1+80},{BASE+30} Z"
 
     # busiest day
     best_date, best_count, best_week = None, -1, 0
@@ -192,7 +193,7 @@ def draw(total, weeks, user):
     for wi, w in enumerate(weeks):
         d = dt.date.fromisoformat(w[0][0])
         if d.month != last and d.day <= 7 and wi > 0:
-            months += f'<text x="{X0 + wi*step:.0f}" y="{BASE + 40}" class="mo" text-anchor="middle">{d.strftime("%b")}</text>'
+            months += f'<text x="{X0 + wi*step:.0f}" y="{BASE + 44}" class="mo" text-anchor="middle">{d.strftime("%b")}</text>'
         last = d.month
 
     ripples = ""
@@ -202,8 +203,13 @@ def draw(total, weeks, user):
         ripples += (f'<path d="M{x:.0f},{y:.0f} q{w_/2:.0f},{rnd.uniform(-1.2,1.2):.1f} {w_:.0f},0" stroke="{PAPER}" '
                     f'stroke-width="{rnd.uniform(.6,1.2):.1f}" fill="none" opacity="{rnd.uniform(.1,.3):.2f}"/>')
 
+    motes = ""
+    for _ in range(18):
+        motes += (f'<circle class="mote" cx="{rnd.uniform(30, 970):.0f}" cy="{rnd.uniform(110, H):.0f}" r="{rnd.uniform(.8, 2):.1f}" '
+                  f'fill="{PAPER}" filter="url(#soft)" style="animation-duration:{rnd.uniform(9, 18):.1f}s;'
+                  f'animation-delay:-{rnd.uniform(0, 18):.1f}s"/>')
     num = fmt_int(total)
-    num_w = sum(DIGIT_W.get(c, .55) for c in num) * 38
+    num_w = sum(DIGIT_W.get(c, .55) for c in num) * 46
     if best_count > 0:
         anchor_end = bx > 720
         lx = bx - 14 if anchor_end else bx + 14
@@ -217,12 +223,18 @@ def draw(total, weeks, user):
 
     updated = dt.datetime.now(dt.timezone.utc).strftime("%d %b %Y")
     style = f"""{open(FONT_CSS).read() if os.path.exists(FONT_CSS) else ''}
-.lbl{{font:600 10.5px {SANS};fill:{MUTED};letter-spacing:2.2px}}
-.num{{font:500 38px {SERIF};fill:{PAPER}}}
-.it{{font:italic 400 15px {SERIF};fill:#b5b0a6}}
-.best{{font:italic 400 13px {SERIF};fill:{PAPER}}}
-.mo{{font:500 10.5px {SANS};fill:{DIM};letter-spacing:1px}}
-.foot{{font:italic 400 11.5px {SERIF};fill:{DIM}}}
+.lbl{{font:600 12px {SANS};fill:{MUTED};letter-spacing:2.4px}}
+.num{{font:500 46px {SERIF};fill:{PAPER}}}
+.it{{font:italic 400 18px {SERIF};fill:#b5b0a6}}
+.best{{font:italic 400 15px {SERIF};fill:{PAPER}}}
+.mo{{font:500 12.5px {SANS};fill:{DIM};letter-spacing:1px}}
+.foot{{font:italic 400 14px {SERIF};fill:{DIM}}}
+.par{{animation:par 30s ease-in-out infinite alternate}}
+@keyframes par{{from{{transform:translateX(-12px)}}to{{transform:translateX(12px)}}}}
+.flow{{animation:flow 9s ease-in-out infinite alternate}}
+@keyframes flow{{from{{transform:translateX(-14px)}}to{{transform:translateX(14px)}}}}
+.mote{{animation:rise 12s linear infinite;opacity:0}}
+@keyframes rise{{0%{{transform:translate(0,0);opacity:0}}15%{{opacity:.7}}85%{{opacity:.5}}100%{{transform:translate(22px,-70px);opacity:0}}}}
 .m0{{animation:dr 26s ease-in-out infinite alternate}}
 .m1{{animation:dr 32s ease-in-out infinite alternate-reverse}}
 .m2{{animation:dr 38s ease-in-out infinite alternate}}
@@ -243,21 +255,22 @@ def draw(total, weeks, user):
 </defs>
 <g clip-path="url(#cl)"><rect width="{W}" height="{H}" fill="url(#bg)"/><rect width="{W}" height="{H}" fill="#fff" filter="url(#paper)"/>
 <g>
-<path d="{far_fill}" fill="url(#gFar)" filter="url(#bleed)"/>
+<g class="par"><path d="{far_fill}" fill="url(#gFar)" filter="url(#bleed)"/></g>
 {mist}
 <path d="{near_fill}" fill="url(#gNear)" filter="url(#bleed)" opacity=".6"/>
 <path d="{near_fill}" fill="url(#gNear)" filter="url(#brush)"/>
 <path d="M{ridge_d[1:]}" fill="none" stroke="{PAPER}" stroke-width="2.4" opacity=".85" filter="url(#stroke)"/>
 {moss}
-<g filter="url(#rough)">{ripples}</g>
+<g class="flow" filter="url(#rough)">{ripples}</g>
+{motes}
 {marker}{label}
 </g>
 <path d="M{X0},{BASE + 2} L{X1},{BASE + 2}" stroke="{PAPER}" stroke-width="1" opacity=".18"/>
 {months}
-<text x="40" y="44" class="lbl">CONTRIBUTIONS · LAST 12 MONTHS</text>
-<text x="39" y="88" class="num">{num}</text>
-<text x="{39 + num_w + 12:.0f}" y="88" class="it">contributions</text>
-<text x="{W-40}" y="44" class="foot" text-anchor="end">each peak is one week · updated {updated}</text>
+<text x="40" y="48" class="lbl">CONTRIBUTIONS · LAST 12 MONTHS</text>
+<text x="38" y="100" class="num">{num}</text>
+<text x="{38 + num_w + 14:.0f}" y="100" class="it">contributions</text>
+<text x="{W-40}" y="48" class="foot" text-anchor="end">each peak is one week · updated {updated}</text>
 </g><rect x=".5" y=".5" width="{W-1}" height="{H-1}" rx="14" fill="none" stroke="{BORDER}"/>"""
 
     title = f"{user}: {num} contributions in the last year"
